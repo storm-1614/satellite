@@ -1,0 +1,1 @@
+/data/Typhoon&Weather_Archive/satellite/main.py
