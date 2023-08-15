@@ -45,12 +45,16 @@ if __name__ == "__main__":
         print("-"*20)
         print(time.strftime('%Y-%m-%d %H:%M'))
         print("下载中")
-        downloadWallpaper()
-        print("下载成功")
+        try:
+            downloadWallpaper()
+            print("下载成功")
+        except:
+            print("下载失败")
+            continue
         cropWallpaper()    
         print("剪裁成功")
         setWallpaper()      
         print("壁纸设置成功")
         time.sleep(600)  ## 十分钟一换
 
-   
+ 
