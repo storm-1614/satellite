@@ -27,9 +27,9 @@ def downloadWallpaper():
 def cropWallpaper():
     img = Image.open(downloadFile)
     width, height = img.size
-    x = 2522
-    y = 966
-    box = (x, y, x+1920*3.6, y+1080*3.6)  ## 剪裁宽高
+    x = 2000
+    y = 1000
+    box = (x, y, x+1920*3.8, y+1080*3.8)  ## 剪裁宽高
     region = img.crop(box)  # 用 img 类创建 region 对象
     region.save(os.path.join(downloadPath+'end.jpg')) ## 调用 save 方法保存最终图片
         
@@ -40,16 +40,21 @@ def setWallpaper():
 
 if __name__ == "__main__":
     ## 循环以便自动更新壁纸
-    setWallpaper()
-    print("-"*20)
-    print(time.strftime('%Y-%m-%d %H:%M'))
-    print("下载中")
-    downloadWallpaper()
-    print("下载成功")
-    cropWallpaper()    
-    print("剪裁成功")
-    setWallpaper()      
-    print("壁纸设置成功")
-    time.sleep(900)  ## 十分钟一换
+    while True:
+        setWallpaper()
+        print("-"*20)
+        print(time.strftime('%Y-%m-%d %H:%M'))
+        print("下载中")
+        try:
+            downloadWallpaper()
+            print("下载成功")
+        except:
+            print("下载失败")
+            continue
+        cropWallpaper()    
+        print("剪裁成功")
+        setWallpaper()      
+        print("壁纸设置成功")
+        time.sleep(900)  ## 十分钟一换
 
 
