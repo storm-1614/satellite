@@ -5,7 +5,7 @@ import os
 import time
 from PIL import Image
 
-downloadPath='./pic/'
+downloadPath = os.path.join(os.environ['HOME']+'/.cache/fy4b/')
 
  ## 检查目录是否创建，如果没有则创建  
 def checkDir(downloadPath):
@@ -35,7 +35,7 @@ def cropWallpaper():
         
 ## 设置壁纸
 def setWallpaper():
-    os.system("feh --bg-fill "+downloadPath+"/end.jpg")
+    os.system("feh --bg-fill "+downloadPath+"end.jpg")
 
 
 if __name__ == "__main__":
@@ -44,17 +44,15 @@ if __name__ == "__main__":
         setWallpaper()
         print("-"*20)
         print(time.strftime('%Y-%m-%d %H:%M'))
-        print("下载中")
         try:
+            print("下载中")
             downloadWallpaper()
             print("下载成功")
+            cropWallpaper()    
+            print("剪裁成功")
+            setWallpaper()      
+            print("壁纸设置成功")
+            time.sleep(900)  ## 十五分钟一换
         except:
             print("下载失败")
             continue
-        cropWallpaper()    
-        print("剪裁成功")
-        setWallpaper()      
-        print("壁纸设置成功")
-        time.sleep(900)  ## 十分钟一换
-
-
