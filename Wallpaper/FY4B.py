@@ -18,7 +18,8 @@ def downloadWallpaper():
     picture_url = 'http://img.nsmc.org.cn/CLOUDIMAGE/FY4B/AGRI/GCLR/FY4B_DISK_GCLR.JPG'   ## 下载 FY4B 链接
     res = requests.get(picture_url)    ### 创建一个 res 对象内容：下载图片
     global downloadFile
-    downloadFile = os.path.join(downloadPath+time.strftime('%Y-%m-%d %H:%M')+"-img.jpg")
+#    downloadFile = os.path.join(downloadPath+time.strftime('%Y-%m-%d %H:%M')+"-img.jpg")
+    downloadFile = os.path.join(downloadPath+"img.jpg")
     ## 写入
     with open(downloadFile, 'wb') as f:
         f.write(res.content)
@@ -36,7 +37,6 @@ def cropWallpaper():
 ## 设置壁纸
 def setWallpaper():
     os.system("feh --bg-fill "+downloadPath+"end.jpg")
-
 
 if __name__ == "__main__":
     ## 循环以便自动更新壁纸
