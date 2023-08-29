@@ -5,7 +5,7 @@ import os
 import time
 from PIL import Image
 
-downloadPath='/data/TyphoonWeather_Archive/satellite/pic/'
+downloadPath = os.path.join(os.environ['HOME']+'/.cache/fy4b/')
 
  ## 检查目录是否创建，如果没有则创建  
 def checkDir(downloadPath):
@@ -18,7 +18,7 @@ def downloadWallpaper():
     picture_url = 'https://rammb.cira.colostate.edu/ramsdis/online/images/latest_hi_res/himawari-8/full_disk_ahi_true_color.jpg'   ## 下载向日葵9号链接
     res = requests.get(picture_url)    ### 创建一个 res 对象内容：下载图片
     global downloadFile
-    downloadFile = os.path.join(downloadPath+time.strftime('%Y-%m-%d %H:%M')+"-img.jpg")
+    downloadFile = os.path.join(downloadPath+"img.jpg")
     ## 写入
     with open(downloadFile, 'wb') as f:
         f.write(res.content)
