@@ -5,11 +5,13 @@ import os
 import logging
 import time
 import datetime
+import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from PIL import Image
 
 downloadPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/")
 Image.MAX_IMAGE_PIXELS = 300000000  # 设置最大图片尺寸
+
 
 def init_log():
     """
@@ -26,7 +28,7 @@ def init_log():
     console_hander.setLevel(logging.INFO)
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s" # FIX: 时间格式修改
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # FIX: 时间格式修改
     )
     file_hander.setFormatter(formatter)
     console_hander.setFormatter(formatter)
@@ -74,6 +76,11 @@ def downloadWallpaper():
             logger.error(f"连接错误，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
                 logger.error("错误次数超过 {max_retry} 次，下载失败")
+        except requests.exceptions.ChunkedEncodingError:
+            retry_count += 1
+            logger.error(f"分块编码错误，正在进行第 {retry_count} 次重试...")
+            if retry_count >= max_retry:
+                logger.error("错误次数超过 {max_retry} 次，下载失败")
 
 
 ## 剪裁图片使之与屏幕相符
@@ -108,22 +115,40 @@ def update():
     logger.debug("壁纸设置成功")
 
 
-if __name__ == "__main__":
-    init_log()
+init_log()
 
-    scheduler = BackgroundScheduler()  # 创建一个后台调度器
-    scheduler.add_job(
-        update,
-        "interval",
-        minutes=15,
-        id="update_wallpaper",
-        next_run_time=datetime.datetime.now(),
-    )  # 添加任务
-    scheduler.start()  # 开启调度器
-    logger.info(f"调度器已启动")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        scheduler.shutdown()
-        logger.info("调度器已关闭")
+scheduler = BackgroundScheduler()  # 创建一个后台调度器
+scheduler.add_job(
+    update,
+    "cron",
+    minute="10,30,50",
+    id="update_wallpaper",
+)  # 添加任务
+scheduler.add_job(update, "date", run_date=datetime.datetime.now())
+
+
+# 睡眠唤醒自动恢复
+def watch_wake():
+    last = datetime.datetime.now()
+    while True:
+        time.sleep(5)
+        now = datetime.datetime.now()
+        if now - last > datetime.timedelta(minutes=1):
+            try:
+                job = scheduler.get_job("update_wallpaper")
+                if job:
+                    job.modify(next_run_time=None)
+            except:
+                pass
+        last = now
+
+
+threading.Thread(target=watch_wake, daemon=True).start()
+scheduler.start()  # 开启调度器
+logger.info(f"调度器已启动")
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    scheduler.shutdown()
+    logger.info("调度器已关闭")
