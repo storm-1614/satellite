@@ -2,6 +2,7 @@
 
 import requests
 import os
+import logging
 import time
 import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -9,6 +10,29 @@ from PIL import Image
 
 downloadPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/")
 Image.MAX_IMAGE_PIXELS = 300000000  # 设置最大图片尺寸
+
+def init_log():
+    """
+    初始化日志模块
+    """
+    # TODO: 参数配置
+    global logger
+    logger = logging.getLogger("Logging")
+    logger.setLevel(logging.INFO)
+    file_hander = logging.FileHandler(downloadPath + "fy4b.log")
+    file_hander.setLevel(logging.INFO)
+
+    console_hander = logging.StreamHandler()
+    console_hander.setLevel(logging.INFO)
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s" # FIX: 时间格式修改
+    )
+    file_hander.setFormatter(formatter)
+    console_hander.setFormatter(formatter)
+
+    logger.addHandler(file_hander)
+    logger.addHandler(console_hander)
 
 
 def checkDir(downloadPath):
@@ -24,15 +48,15 @@ def downloadWallpaper():
     下载壁纸
     调用 requests 库，下载 nsmc 的 fy4b 真彩云图
     """
-    checkDir(downloadPath)  
+    checkDir(downloadPath)
     picture_url = "http://img.nsmc.org.cn/CLOUDIMAGE/FY4B/AGRI/GCLR/FY4B_DISK_GCLR.JPG"  ## 下载 FY4B 链接
     retry_count = 0
     max_retry = 5
     while retry_count < max_retry:
         try:
-            print("下载中")
+            logger.info("下载中")
             res = requests.get(picture_url)  ### 创建一个 res 对象内容：下载图片
-            print("下载成功")
+            logger.info("下载成功")
             global downloadFile
             downloadFile = os.path.join(
                 downloadPath + time.strftime("%Y-%m-%d_%H:%M") + "-img.jpg"
@@ -42,14 +66,14 @@ def downloadWallpaper():
             break
         except requests.exceptions.ConnectTimeout:
             retry_count += 1
-            print(f"下载超时，正在进行第 {retry_count} 次重试...")
+            logger.error(f"下载超时，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
-                print("错误次数超过 {max_retry} 次，下载失败")
+                logger.error("错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ConnectionError:
             retry_count += 1
-            print(f"连接错误，正在进行第 {retry_count} 次重试...")
+            logger.error(f"连接错误，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
-                print("错误次数超过 {max_retry} 次，下载失败")
+                logger.error("错误次数超过 {max_retry} 次，下载失败")
 
 
 ## 剪裁图片使之与屏幕相符
@@ -76,16 +100,17 @@ def update():
     """
     time.sleep(1)
     print("=================")
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 执行")
+    logger.info(f"执行")
     downloadWallpaper()
-    print("下载成功")
     cropWallpaper()
-    print("剪裁成功")
+    logger.debug("剪裁成功")
     setWallpaper()
-    print("壁纸设置成功")
+    logger.debug("壁纸设置成功")
 
 
 if __name__ == "__main__":
+    init_log()
+
     scheduler = BackgroundScheduler()  # 创建一个后台调度器
     scheduler.add_job(
         update,
@@ -95,10 +120,10 @@ if __name__ == "__main__":
         next_run_time=datetime.datetime.now(),
     )  # 添加任务
     scheduler.start()  # 开启调度器
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 调度器已启动")
+    logger.info(f"调度器已启动")
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         scheduler.shutdown()
-        print("\n调度器已关闭")
+        logger.info("调度器已关闭")
