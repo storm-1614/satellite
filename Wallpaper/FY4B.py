@@ -5,52 +5,59 @@ import os
 import time
 from PIL import Image
 
-downloadPath = os.path.join(os.environ['HOME']+'/.cache/fy4b/')
+downloadPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/")
 
- ## 检查目录是否创建，如果没有则创建  
+
+## 检查目录是否创建，如果没有则创建
 def checkDir(downloadPath):
     mkdir = lambda x: os.makedirs(x) if not os.path.exists(x) else True
     mkdir(downloadPath)
 
+
 # 下载壁纸
 def downloadWallpaper():
-    checkDir(downloadPath)   ## 检查目录创建
-    picture_url = 'http://img.nsmc.org.cn/CLOUDIMAGE/FY4B/AGRI/GCLR/FY4B_DISK_GCLR.JPG'   ## 下载 FY4B 链接
-    res = requests.get(picture_url)    ### 创建一个 res 对象内容：下载图片
+    checkDir(downloadPath)  ## 检查目录创建
+    picture_url = "http://img.nsmc.org.cn/CLOUDIMAGE/FY4B/AGRI/GCLR/FY4B_DISK_GCLR.JPG"  ## 下载 FY4B 链接
+    res = requests.get(picture_url)  ### 创建一个 res 对象内容：下载图片
     global downloadFile
-#    downloadFile = os.path.join(downloadPath+time.strftime('%Y-%m-%d %H:%M')+"-img.jpg")
-    downloadFile = os.path.join(downloadPath+"img.jpg")
+    downloadFile = os.path.join(downloadPath+time.strftime('%Y-%m-%d_%H:%M')+"-img.jpg")
+    #downloadFile = os.path.join(downloadPath + "img.jpg")
     ## 写入
-    with open(downloadFile, 'wb') as f:
+    with open(downloadFile, "wb") as f:
         f.write(res.content)
+
 
 ## 剪裁图片使之与屏幕相符
 def cropWallpaper():
     img = Image.open(downloadFile)
     width, height = img.size
-    x = 2000
-    y = 1000
-    box = (x, y, x+1920*3.8, y+1080*3.8)  ## 剪裁宽高
+    x = 2400
+    y = 1200
+    box = (x, y, x + 1920 * 4.5, y + 1080 * 4.5)  ## 剪裁宽高
     region = img.crop(box)  # 用 img 类创建 region 对象
-    region.save(os.path.join(downloadPath+'end.jpg')) ## 调用 save 方法保存最终图片
-        
+    region.save(os.path.join(downloadPath + "end.jpg"))  ## 调用 save 方法保存最终图片
+
+
 ## 设置壁纸
 def setWallpaper():
-    os.system("feh --bg-fill "+downloadPath+"end.jpg")
+    os.system(
+        "awww img -a --transition-type=center " + downloadPath + "end.jpg"
+    )  # hyprland with hyprpaper
+
 
 if __name__ == "__main__":
     ## 循环以便自动更新壁纸
     while True:
         setWallpaper()
-        print("-"*20)
-        print(time.strftime('%Y-%m-%d %H:%M'))
+        print("-" * 20)
+        print(time.strftime("%Y-%m-%d %H:%M"))
         try:
             print("下载中")
             downloadWallpaper()
             print("下载成功")
-            cropWallpaper()    
+            cropWallpaper()
             print("剪裁成功")
-            setWallpaper()      
+            setWallpaper()
             print("壁纸设置成功")
             time.sleep(900)  ## 十五分钟一换
         except:
