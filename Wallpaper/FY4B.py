@@ -3,9 +3,12 @@
 import requests
 import os
 import time
+import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
 from PIL import Image
 
 downloadPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/")
+Image.MAX_IMAGE_PIXELS = 300000000  # 设置最大图片尺寸
 
 
 ## 检查目录是否创建，如果没有则创建
@@ -45,21 +48,29 @@ def setWallpaper():
     )  # hyprland with hyprpaper
 
 
+def update():
+    """
+    壁纸更新函数
+    """
+    time.sleep(1);
+    print("=================")
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 执行")
+    print("下载中")
+    downloadWallpaper()
+    print("下载成功")
+    cropWallpaper()
+    print("剪裁成功")
+    setWallpaper()
+    print("壁纸设置成功")
+
 if __name__ == "__main__":
-    ## 循环以便自动更新壁纸
-    while True:
-        setWallpaper()
-        print("-" * 20)
-        print(time.strftime("%Y-%m-%d %H:%M"))
-        try:
-            print("下载中")
-            downloadWallpaper()
-            print("下载成功")
-            cropWallpaper()
-            print("剪裁成功")
-            setWallpaper()
-            print("壁纸设置成功")
-            time.sleep(900)  ## 十五分钟一换
-        except:
-            print("下载失败")
-            continue
+    scheduler = BackgroundScheduler() # 创建一个后台调度器
+    scheduler.add_job(update, 'interval', minutes = 15, id='update_wallpaper', next_run_time=datetime.datetime.now()) # 添加任务
+    scheduler.start() # 开启调度器
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 调度器已启动")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        scheduler.shutdown()
+        print("\n调度器已关闭")
