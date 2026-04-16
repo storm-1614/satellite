@@ -9,7 +9,7 @@
 仅限用于 Linux 系统，如有需要，欢迎通过 Issues 为我提供其他操作系统的设置壁纸方法  
 依赖 :  
 ```
-sudo pacman -S feh python3
+sudo pacman -S feh python3 python-apscheduler
 ```
 
 FY4B.py 比较完整，可以直接运行。会在`~/.cache/fy4b/`创建文件用作数据存储，而且不需要代理大陆内就可以使用  

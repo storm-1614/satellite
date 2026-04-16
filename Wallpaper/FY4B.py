@@ -28,7 +28,8 @@ def init_log():
     console_hander.setLevel(logging.INFO)
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # FIX: 时间格式修改
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     file_hander.setFormatter(formatter)
     console_hander.setFormatter(formatter)
@@ -61,26 +62,28 @@ def downloadWallpaper():
             logger.info("下载成功")
             global downloadFile
             downloadFile = os.path.join(
-                downloadPath + time.strftime("%Y-%m-%d_%H:%M") + "-img.jpg"
+                downloadPath + time.strftime("%Y-%m-%d_%H:%M") + ".jpg"
             )  ## 写入
             with open(downloadFile, "wb") as f:
                 f.write(res.content)
             break
         except requests.exceptions.ConnectTimeout:
             retry_count += 1
+            time.sleep(3)
             logger.error(f"下载超时，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
-                logger.error("错误次数超过 {max_retry} 次，下载失败")
+                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ConnectionError:
+            time.sleep(3)
             retry_count += 1
             logger.error(f"连接错误，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
-                logger.error("错误次数超过 {max_retry} 次，下载失败")
+                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ChunkedEncodingError:
             retry_count += 1
             logger.error(f"分块编码错误，正在进行第 {retry_count} 次重试...")
             if retry_count >= max_retry:
-                logger.error("错误次数超过 {max_retry} 次，下载失败")
+                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
 
 
 ## 剪裁图片使之与屏幕相符
@@ -121,29 +124,47 @@ scheduler = BackgroundScheduler()  # 创建一个后台调度器
 scheduler.add_job(
     update,
     "cron",
-    minute="10,30,50",
+    minute="10,25,40,55",
     id="update_wallpaper",
 )  # 添加任务
-scheduler.add_job(update, "date", run_date=datetime.datetime.now())
+update()
 
 
-# 睡眠唤醒自动恢复
 def watch_wake():
+    """
+    睡眠唤醒自动恢复
+    """
     last = datetime.datetime.now()
     while True:
         time.sleep(5)
         now = datetime.datetime.now()
-        if now - last > datetime.timedelta(minutes=1):
+        time_diff = now - last # 对比时间差
+        if time_diff > datetime.timedelta(minutes=1):
             try:
-                job = scheduler.get_job("update_wallpaper")
+                logger.info("挂起，执行时间复位")
+                if not scheduler.running:
+                    logger.warning("调度器未运行，重启调度器")
+                    scheduler.start()
+                job = scheduler.get_job("update_wallpaper") # 获取任务
                 if job:
-                    job.modify(next_run_time=None)
+                    job.modify(next_run_time=datetime.datetime.now())
+                else:
+                    logger.error("找不到任务")
+            except Exception as e:
+                logger.error(f"唤醒处理失败: {e}", exc_info=True)
+
+        if time_diff > datetime.timedelta(minutes=15):
+            try:
+                time.sleep(10)
+                logger.info("长时间挂起，立刻执行一次")
+                update()
             except:
                 pass
+
         last = now
 
 
-threading.Thread(target=watch_wake, daemon=True).start()
+threading.Thread(target=watch_wake, daemon=True).start()  # 启动监听
 scheduler.start()  # 开启调度器
 logger.info(f"调度器已启动")
 try:
