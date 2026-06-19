@@ -7,11 +7,19 @@ import time
 import datetime
 import threading
 from apscheduler.schedulers.background import BackgroundScheduler
+from filelock import FileLock, Timeout
 from PIL import Image
 
 downloadPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/")
+lockPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/app.lock")
+lock = FileLock(lockPath, timeout=0)
 Image.MAX_IMAGE_PIXELS = 300000000  # 设置最大图片尺寸
 
+try:
+    lock.acquire()
+except Timeout:
+    print("已有实例在运行，退出本次进程。")
+    exit(1)
 
 def init_log():
     """
@@ -69,14 +77,14 @@ def downloadWallpaper():
             break
         except requests.exceptions.ConnectTimeout:
             retry_count += 1
-            time.sleep(3)
             logger.error(f"下载超时，正在进行第 {retry_count} 次重试...")
+            time.sleep(3)
             if retry_count >= max_retry:
                 logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ConnectionError:
-            time.sleep(3)
             retry_count += 1
             logger.error(f"连接错误，正在进行第 {retry_count} 次重试...")
+            time.sleep(3)
             if retry_count >= max_retry:
                 logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ChunkedEncodingError:
@@ -100,7 +108,7 @@ def cropWallpaper():
 ## 设置壁纸
 def setWallpaper():
     os.system(
-        "awww img -a --transition-type=center " + downloadPath + "end.jpg"
+        "dms ipc call wallpaper set " + downloadPath + "end.jpg"
     )  # hyprland with hyprpaper
 
 
@@ -152,14 +160,6 @@ def watch_wake():
                     logger.error("找不到任务")
             except Exception as e:
                 logger.error(f"唤醒处理失败: {e}", exc_info=True)
-
-        if time_diff > datetime.timedelta(minutes=15):
-            try:
-                time.sleep(10)
-                logger.info("长时间挂起，立刻执行一次")
-                update()
-            except:
-                pass
 
         last = now
 
