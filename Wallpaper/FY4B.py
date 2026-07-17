@@ -6,6 +6,7 @@ import logging
 import time
 import datetime
 import threading
+import subprocess
 from apscheduler.schedulers.background import BackgroundScheduler
 from filelock import FileLock, Timeout
 from PIL import Image
@@ -20,6 +21,7 @@ try:
 except Timeout:
     print("已有实例在运行，退出本次进程。")
     exit(1)
+
 
 def init_log():
     """
@@ -70,7 +72,10 @@ def downloadWallpaper():
             logger.info("下载成功")
             global downloadFile
             downloadFile = os.path.join(
-                downloadPath + time.strftime("%Y-%m-%d_%H:%M") + ".jpg"
+                downloadPath
+                +
+                # time.strftime("%Y-%m-%d_%H:%M")
+                "raw.jpg"
             )  ## 写入
             with open(downloadFile, "wb") as f:
                 f.write(res.content)
@@ -107,9 +112,12 @@ def cropWallpaper():
 
 ## 设置壁纸
 def setWallpaper():
-    os.system(
-        "dms ipc call wallpaper set " + downloadPath + "end.jpg"
-    )  # hyprland with hyprpaper
+    #     os.system(
+    #         "dms ipc call wallpaper set " + downloadPath + "end.jpg"
+    #     )  # hyprland with hyprpaper
+    subprocess.run(
+        ["awww", "img", "-a", "--transition-type=center", downloadPath + "end.jpg"]
+    )
 
 
 def update():
@@ -146,14 +154,14 @@ def watch_wake():
     while True:
         time.sleep(5)
         now = datetime.datetime.now()
-        time_diff = now - last # 对比时间差
+        time_diff = now - last  # 对比时间差
         if time_diff > datetime.timedelta(minutes=1):
             try:
                 logger.info("挂起，执行时间复位")
                 if not scheduler.running:
                     logger.warning("调度器未运行，重启调度器")
                     scheduler.start()
-                job = scheduler.get_job("update_wallpaper") # 获取任务
+                job = scheduler.get_job("update_wallpaper")  # 获取任务
                 if job:
                     job.modify(next_run_time=datetime.datetime.now())
                 else:
