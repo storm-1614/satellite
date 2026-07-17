@@ -2,6 +2,7 @@
 
 import requests
 import os
+import platform
 import logging
 import time
 import datetime
@@ -110,14 +111,46 @@ def cropWallpaper():
     region.save(os.path.join(downloadPath + "end.jpg"))  ## 调用 save 方法保存最终图片
 
 
-## 设置壁纸
+def getEnv() -> str:
+    """获取系统环境，返回窗口管理器的信息"""
+    osName: str = platform.system()
+    if osName == "Linux":
+        windowsManager = os.environ.get("XDG_CURRENT_DESKTOP")
+        if windowsManager is None:
+            windowsManager = "unknown"
+
+    elif osName == "Windows":
+        windowsManager = "dwm"
+    else:
+        windowsManager = "unknown"
+    logger.info(f"操作系统：{osName}, 窗口环境：{windowsManager}")
+
+    return windowsManager
+
+
+
+
 def setWallpaper():
-    #     os.system(
-    #         "dms ipc call wallpaper set " + downloadPath + "end.jpg"
-    #     )  # hyprland with hyprpaper
-    subprocess.run(
-        ["awww", "img", "-a", "--transition-type=center", downloadPath + "end.jpg"]
-    )
+    """设置壁纸"""
+    try:
+        if wm == "niri":
+            subprocess.run(
+                [
+                    "awww",
+                    "img",
+                    "-a",
+                    "--transition-type=center",
+                    downloadPath + "end.jpg",
+                ]
+            )
+        elif wm == "KDE":
+            subprocess.run(["plasma-apply-wallpaperimage", downloadPath + "end.jpg"])
+        else:
+            logger.error("还没开始写，或者错误")
+            exit(2)
+        logger.debug("壁纸设置成功")
+    except subprocess.CalledProcessError as e:
+        print(f"更换失败: {e}")
 
 
 def update():
@@ -131,10 +164,10 @@ def update():
     cropWallpaper()
     logger.debug("剪裁成功")
     setWallpaper()
-    logger.debug("壁纸设置成功")
 
 
 init_log()
+wm = getEnv()
 
 scheduler = BackgroundScheduler()  # 创建一个后台调度器
 scheduler.add_job(
