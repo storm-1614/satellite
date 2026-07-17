@@ -17,19 +17,12 @@ lockPath = os.path.join(os.environ["HOME"] + "/.cache/fy4b/app.lock")
 lock = FileLock(lockPath, timeout=0)
 Image.MAX_IMAGE_PIXELS = 300000000  # 设置最大图片尺寸
 
-try:
-    lock.acquire()
-except Timeout:
-    print("已有实例在运行，退出本次进程。")
-    exit(1)
 
-
-def init_log():
+def init_log() -> logging.Logger:
     """
     初始化日志模块
     """
     # TODO: 参数配置
-    global logger
     logger = logging.getLogger("Logging")
     logger.setLevel(logging.INFO)
     file_hander = logging.FileHandler(downloadPath + "fy4b.log")
@@ -47,6 +40,7 @@ def init_log():
 
     logger.addHandler(file_hander)
     logger.addHandler(console_hander)
+    return logger
 
 
 def checkDir(downloadPath):
@@ -57,7 +51,7 @@ def checkDir(downloadPath):
     mkdir(downloadPath)
 
 
-def downloadWallpaper():
+def downloadWallpaper() -> str:
     """
     下载壁纸
     调用 requests 库，下载 nsmc 的 fy4b 真彩云图
@@ -66,18 +60,20 @@ def downloadWallpaper():
     picture_url = "http://img.nsmc.org.cn/CLOUDIMAGE/FY4B/AGRI/GCLR/FY4B_DISK_GCLR.JPG"  ## 下载 FY4B 链接
     retry_count = 0
     max_retry = 5
+    downloadFile: str = os.path.join(
+        downloadPath
+        +
+        # time.strftime("%Y-%m-%d_%H:%M")
+        "raw.jpg"
+    )  ## 写入
+
     while retry_count < max_retry:
         try:
+            if retry_count >= max_retry:
+                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
             logger.info("下载中")
             res = requests.get(picture_url)  ### 创建一个 res 对象内容：下载图片
             logger.info("下载成功")
-            global downloadFile
-            downloadFile = os.path.join(
-                downloadPath
-                +
-                # time.strftime("%Y-%m-%d_%H:%M")
-                "raw.jpg"
-            )  ## 写入
             with open(downloadFile, "wb") as f:
                 f.write(res.content)
             break
@@ -85,24 +81,19 @@ def downloadWallpaper():
             retry_count += 1
             logger.error(f"下载超时，正在进行第 {retry_count} 次重试...")
             time.sleep(3)
-            if retry_count >= max_retry:
-                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ConnectionError:
             retry_count += 1
             logger.error(f"连接错误，正在进行第 {retry_count} 次重试...")
             time.sleep(3)
-            if retry_count >= max_retry:
-                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
         except requests.exceptions.ChunkedEncodingError:
             retry_count += 1
             logger.error(f"分块编码错误，正在进行第 {retry_count} 次重试...")
-            if retry_count >= max_retry:
-                logger.error(f"错误次数超过 {max_retry} 次，下载失败")
+    return downloadFile
 
 
 ## 剪裁图片使之与屏幕相符
-def cropWallpaper():
-    img = Image.open(downloadFile)
+def cropWallpaper(image_path: str):
+    img = Image.open(image_path)
     width, height = img.size
     x = 2400
     y = 1200
@@ -126,8 +117,6 @@ def getEnv() -> str:
     logger.info(f"操作系统：{osName}, 窗口环境：{windowsManager}")
 
     return windowsManager
-
-
 
 
 def setWallpaper():
@@ -160,23 +149,10 @@ def update():
     time.sleep(1)
     print("=================")
     logger.info(f"执行")
-    downloadWallpaper()
-    cropWallpaper()
+    image_path = downloadWallpaper()
+    cropWallpaper(image_path)
     logger.debug("剪裁成功")
     setWallpaper()
-
-
-init_log()
-wm = getEnv()
-
-scheduler = BackgroundScheduler()  # 创建一个后台调度器
-scheduler.add_job(
-    update,
-    "cron",
-    minute="10,25,40,55",
-    id="update_wallpaper",
-)  # 添加任务
-update()
 
 
 def watch_wake():
@@ -203,6 +179,25 @@ def watch_wake():
                 logger.error(f"唤醒处理失败: {e}", exc_info=True)
 
         last = now
+
+
+try:
+    _ = lock.acquire()
+except Timeout:
+    print("已有实例在运行，退出本次进程。")
+    exit(1)
+
+logger = init_log()
+wm = getEnv()
+
+scheduler = BackgroundScheduler()  # 创建一个后台调度器
+scheduler.add_job(
+    update,
+    "cron",
+    minute="10,25,40,55",
+    id="update_wallpaper",
+)  # 添加任务
+update()
 
 
 threading.Thread(target=watch_wake, daemon=True).start()  # 启动监听
