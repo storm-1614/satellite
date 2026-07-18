@@ -94,12 +94,14 @@ def downloadWallpaper() -> str:
 ## 剪裁图片使之与屏幕相符
 def cropWallpaper(image_path: str):
     img = Image.open(image_path)
+    crop_path = os.path.join(downloadPath + "end.jpg")
     width, height = img.size
     x = 2400
     y = 1200
     box = (x, y, x + 1920 * 4.5, y + 1080 * 4.5)  ## 剪裁宽高
     region = img.crop(box)  # 用 img 类创建 region 对象
-    region.save(os.path.join(downloadPath + "end.jpg"))  ## 调用 save 方法保存最终图片
+    region.save(crop_path)  ## 调用 save 方法保存最终图片
+    return crop_path
 
 
 def getEnv() -> str:
@@ -118,22 +120,50 @@ def getEnv() -> str:
 
     return windowsManager
 
+def setWallpaper_KDE(path:str):
+    """
+    KDE Plasma 修改壁纸
+    用 dbus，解决 plasma-apply-wallpaperimage 自作聪明的问题
+    """
+    import dbus
+    from urllib.parse import quote
 
-def setWallpaper():
+    if not os.path.isfile(path):
+        raise FileNotFoundError
+
+    abs_path = os.path.abspath(path)
+    file_url = "file://" + quote(abs_path, safe="/:@")
+
+    script = f"""
+        var ds = desktops();
+        for (var i = 0; i < ds.length; i++) {{
+            var d = ds[i];
+            d.wallpaperPlugin = 'org.kde.image';
+            d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General'];
+            d.writeConfig('Image', '{file_url}');
+        }}
+    """
+    bus = dbus.SessionBus()
+    plasma = bus.get_object('org.kde.plasmashell', '/PlasmaShell')
+    plasma.evaluateScript(script, dbus_interface='org.kde.PlasmaShell')
+
+
+def setWallpaper(image_path):
     """设置壁纸"""
     try:
         if wm == "niri":
+            # WARN: 这个地方后面该封装成函数，比如 awww,hyprpaper 等等壁纸设定程序（wayland 的壁纸设定程序真多……）
             subprocess.run(
                 [
                     "awww",
                     "img",
                     "-a",
                     "--transition-type=center",
-                    downloadPath + "end.jpg",
+                    image_path
                 ]
             )
         elif wm == "KDE":
-            subprocess.run(["plasma-apply-wallpaperimage", downloadPath + "end.jpg"])
+            setWallpaper_KDE(image_path)
         else:
             logger.error("还没开始写，或者错误")
             exit(2)
@@ -150,9 +180,9 @@ def update():
     print("=================")
     logger.info(f"执行")
     image_path = downloadWallpaper()
-    cropWallpaper(image_path)
+    crop_path = cropWallpaper(image_path)
     logger.debug("剪裁成功")
-    setWallpaper()
+    setWallpaper(crop_path)
 
 
 def watch_wake():
